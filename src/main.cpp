@@ -6,20 +6,29 @@
 #include <Geode/binding/PlayerObject.hpp>
 #include <Geode/binding/GameObject.hpp>
 #include <Geode/binding/CCMenuItemSpriteExtra.hpp>
+#include <Geode/binding/ButtonSprite.hpp>
+#include <Geode/binding/GameManager.hpp>
 #include <Geode/utils/cocos.hpp>
 
 using namespace geode::prelude;
 
 bool g_enableObjectSpawn = false;
 
-CCMenuItemSpriteExtra* g_toggleBtn = nullptr;
+class $modify(MyEditorLayer, LevelEditorLayer) {
+    bool isPlaying() {
+        return m_playbackMode == PlaybackMode::Playing;
+    }
+};
 
 void placeCustomObject(PlayerObject* player, int holdState) {
     if (!g_enableObjectSpawn || !player || !player->m_editorEnabled)
         return;
 
-    auto editor = LevelEditorLayer::get();
-    if (!editor || editor->m_playbackMode != PlaybackMode::Playing)
+    auto editor = GameManager::sharedState()->getEditorLayer();
+    if (!editor) return;
+
+    auto myEditor = static_cast<MyEditorLayer*>(editor);
+    if (!myEditor || !myEditor->isPlaying())
         return;
 
     auto pos = player->getPosition();
@@ -49,10 +58,6 @@ class $modify(MyPlayerObject, PlayerObject) {
         if (!m_editorEnabled || !g_enableObjectSpawn)
             return ret;
 
-        auto lel = LevelEditorLayer::get();
-        if (!lel || lel->m_playbackMode != PlaybackMode::Playing)
-            return ret;
-
         if (btn == PlayerButton::Jump)
             placeCustomObject(this, -1);
 
@@ -65,10 +70,6 @@ class $modify(MyPlayerObject, PlayerObject) {
         if (!m_editorEnabled || !g_enableObjectSpawn)
             return ret;
 
-        auto lel = LevelEditorLayer::get();
-        if (!lel || lel->m_playbackMode != PlaybackMode::Playing)
-            return ret;
-
         if (btn == PlayerButton::Jump)
             placeCustomObject(this, 1);
 
@@ -76,31 +77,13 @@ class $modify(MyPlayerObject, PlayerObject) {
     }
 };
 
-class $modify(MyEditorLayer, LevelEditorLayer) {
-    void onPlaytest() {
-        if (g_toggleBtn) g_toggleBtn->setVisible(false);
-        LevelEditorLayer::onPlaytest();
-    }
-
-    void onResumePlaytest() {
-        if (g_toggleBtn) g_toggleBtn->setVisible(false);
-        LevelEditorLayer::onResumePlaytest();
-    }
-
-    void onPausePlaytest() {
-        if (g_toggleBtn) g_toggleBtn->setVisible(true);
-        LevelEditorLayer::onPausePlaytest();
-    }
-
-    void onStopPlaytest() {
-        if (g_toggleBtn) g_toggleBtn->setVisible(true);
-        LevelEditorLayer::onStopPlaytest();
-    }
-};
-
 class $modify(MyEditorUI, EditorUI) {
+    struct Fields {
+        CCMenuItemSpriteExtra* m_toggleBtn = nullptr;
+    };
+
     void updateButtonState() {
-        if (!g_toggleBtn) return;
+        if (!m_fields->m_toggleBtn) return;
 
         auto spr = ButtonSprite::create(
             "Auto\nOptions",
@@ -117,7 +100,7 @@ class $modify(MyEditorUI, EditorUI) {
         else
             spr->setColor({100, 100, 100});
 
-        g_toggleBtn->setNormalImage(spr);
+        m_fields->m_toggleBtn->setNormalImage(spr);
     }
 
     void onToggleButton(CCObject*) {
@@ -125,14 +108,18 @@ class $modify(MyEditorUI, EditorUI) {
         updateButtonState();
     }
 
-#ifndef GEODE_IS_ANDROID
-    void onPlaytest(CCObject* sender) {
-        EditorUI::onPlaytest(sender);
-        if (m_editorLayer->m_playbackMode != PlaybackMode::Paused)
-            return;
-        if (g_toggleBtn) g_toggleBtn->setVisible(true);
+    void visibilityUpdate(float dt) {
+        if (!m_fields->m_toggleBtn) return;
+
+        if (m_editorLayer) {
+            auto myEditor = static_cast<MyEditorLayer*>(m_editorLayer);
+            if (myEditor && myEditor->isPlaying()) {
+                m_fields->m_toggleBtn->setVisible(false);
+                return;
+            }
+        }
+        m_fields->m_toggleBtn->setVisible(true);
     }
-#endif
 
     bool init(LevelEditorLayer* editor) {
         if (!EditorUI::init(editor))
@@ -154,20 +141,22 @@ class $modify(MyEditorUI, EditorUI) {
             );
             spr->setColor({100, 100, 100});
 
-            g_toggleBtn = CCMenuItemSpriteExtra::create(
+            m_fields->m_toggleBtn = CCMenuItemSpriteExtra::create(
                 spr,
                 this,
                 menu_selector(MyEditorUI::onToggleButton)
             );
 
             if (m_playtestBtn && m_playtestBtn->getParent()) {
-                g_toggleBtn->setPosition(
+                m_fields->m_toggleBtn->setPosition(
                     m_playtestBtn->getPosition() + ccp(70.f, 0.f)
                 );
-                m_playtestBtn->getParent()->addChild(g_toggleBtn);
+                m_playtestBtn->getParent()->addChild(m_fields->m_toggleBtn);
             }
+
+            this->schedule(schedule_selector(MyEditorUI::visibilityUpdate));
         } else {
-            g_toggleBtn = nullptr;
+            m_fields->m_toggleBtn = nullptr;
         }
 
         return true;
