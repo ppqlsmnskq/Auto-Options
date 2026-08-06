@@ -39,7 +39,7 @@ void placeCustomObject(PlayerObject* player, int holdState) {
     if (settingVal > 0)
         objStr += fmt::format(",33,{}", settingVal);
 
-    editor->createObjectsFromString(objStr.c_str(), false, false);
+    editor->createObjectsFromString(objStr, false, true);
 }
 
 class $modify(MyPlayerObject, PlayerObject) {

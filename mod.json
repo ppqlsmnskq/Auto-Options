@@ -1,14 +1,14 @@
 {
-  "geode": "4.10.0",
+  "geode": "5.0.0",
   "gd": {
-    "win": "2.2074",
-    "mac": "2.2074",
-    "ios": "2.2074",
-    "android": "2.2074"
+    "win": "2.2081",
+    "mac": "2.2081",
+    "ios": "2.2081",
+    "android": "2.2081"
   },
   "id": "bluetoadmaker.autooption",
   "name": "Auto Options",
-  "version": "v1.2.0",
+  "version": "v1.2.0-beta",
   "developer": "BlueToadMaker",
   "description": "Places option triggers in such a way that you can make the game auto by holding",
   "tags": ["editor", "offline", "enhancement"],
